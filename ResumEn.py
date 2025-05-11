@@ -1,5 +1,6 @@
 import argparse
 from docx import Document
+from docx.shared import Pt
 from openai import OpenAI
 
 def main():
@@ -11,11 +12,18 @@ def main():
     )
 
     #accepted command-line arguments
-    parser.add_argument("-f","--file", help="specifies the path to your resume (.docx only supported)")
+    parser.add_argument("-f","--file", help="specifies the path to your resume (.docx only supported)", required=True)
     parser.add_argument("-i", "--input", help="path of input file containing job descriptions", required=True)
+    parser.add_argument("-q", "--qualifier", help="path of the qualifier file for generation of professional summary.", required=True)
 
     #enables argparse; displays/prints to command line
     args = parser.parse_args()
+
+    #generate summary, returns summary
+    #summary = summarize(args.qualifier, args.input)
+
+    #write summary to file
+    #sum2Docx(args.file, summary)
 
     #get skills
     skills = extractSkills(args.input)
@@ -23,11 +31,62 @@ def main():
     #write skills to file
     skills2Docx(args.file, skills)
 
+#generates a professional summary and returns it
+def summarize(qualPath, descPath):
+    #opens path to qualifiers file
+    qualifiers = fetchContentsFromFile(qualPath)
+        
+    #opens path to job description file
+    description = fetchContentsFromFile(descPath)
+    
+    gpt = OpenAI(api_key="Your API Key goes here")
+
+    log("Generating a professional summary...")
+
+    response = gpt.responses.create(
+        model="gpt-4-turbo-2024-04-09",
+        input=f"In 500 characters or less, (do not exceed this value) create a professional summary for use on a resume tailored for the attached job description. This should read natural like a professional summary would, but as one optimized for ATSs. Do not generate anything that extends outside the scope of my skills, listed below. The summary is attached below, followed by the job description. Give precedence to the most relevant skills. Only include the summary, please!\nMy skills:\n{qualifiers}\nJob Description:\n{description}"
+    )
+
+    return response.output_text
+
+def sum2Docx(path, summary):
+    doc = Document(path)
+
+    style = doc.styles['Normal']
+    
+    #specifies font to match resume
+    font = style.font
+    font.name = 'Cambria'
+    font.size = Pt(11)
+
+    #location of job summary paragraph
+    starting_index = 4
+
+    #deletes previous job summary paragraph
+    for _ in range(1):
+        p = doc.paragraphs[starting_index]._element
+        p.getparent().remove(p)
+        break
+    
+    #place new line in place of deleted paragraph
+    doc.paragraphs[starting_index]._insert_paragraph_before()
+
+    #write paragraph to new line
+    doc.paragraphs[starting_index].text = summary
+
+    doc.save("output.docx")
+
+    log("Summary successfully generated and written to file.")    
+
 #takes job description from input file; extracts skills.
 def extractSkills(path):
-    #opens path to job description file
-    with open(path, "r") as file:
-        description = file.read()
+    #opens path to job description file    
+    description = fetchContentsFromFile(path)
+
+    gpt = OpenAI(api_key="Your API Key goes here")
+
+    log("Generating skills...")
 
     #specifies openai chatgpt prompt and expected output
     response = gpt.responses.create(
@@ -41,24 +100,43 @@ def extractSkills(path):
     #return skills array to write later to .docx resume
     return skills 
 
+#takes generated skills and writes them to .docx
 def skills2Docx(path, skills):
+    
     doc = Document(path)
+    style = doc.styles['Normal']
+    
+    #specifies font to match resume
+    font = style.font
+    font.name = 'Cambria'
+    font.size = Pt(11)
     
     #finds 'Skills' header
     for index, paragraph in enumerate(doc.paragraphs):
         if 'PROFESSIONAL SKILLS' in paragraph.text:
             skillsLine = index    
 
+    #applies style changes to the soon-to-be 
+    #added text instead of the default (Arial).
+    paragraph.style = doc.styles['Normal']
+
     #writes skills list to resume
-    #TODO: Copy correct style (fonts, font-size, etc.) of document
     for i in range(5):
         skillsLine += 1
         doc.paragraphs[skillsLine].text = skills[i]
-        print(doc.paragraphs[skillsLine].text)        
-        doc.save('updated_resume.docx')
+        doc.save('tailored_resume.docx')
 
-    for paragraph in doc.paragraphs:
-        print(paragraph.text)
-    
+    log("Skills successfully generated and written to file.")
+
+def log(message: str):
+    print(f"\n[!]\t{message}")
+
+def fetchContentsFromFile(path):
+        #opens path to job description file
+    with open(path, "r") as file:
+        contents = file.read()
+
+    return contents
+
 if __name__=="__main__":
     main()
