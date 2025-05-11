@@ -1,3 +1,0 @@
-Skills: Comptia A+ Certified, HackTheBox Academy Active Directory Enumeration & Attacks Course, CS-1410, C++, Python Scripting, Fluent in Linux, 15+ pwn on HackTheBox, fluent in and currently maintaining an AWS Server, 6+ years of customer service experience.
-
-NOTE: I have never worked IT before and am looking to score an entry-level position. Do not state that I have previous experience in IT. The only experience I have that's relevent is 6+ years in Customer Service.
